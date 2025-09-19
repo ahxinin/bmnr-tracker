@@ -1,8 +1,5 @@
-export default function onRequest(context) {
-  return new Response('Hello from Node Functions!', {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/plain'
-    }
-  });
+function handler() {
+  return new Response('Node Functions Handler!');
 }
+
+export default handler;
