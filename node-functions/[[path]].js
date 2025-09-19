@@ -363,100 +363,89 @@ const modifyHtmlContent = (html) => {
   }
 };
 
-// 代理请求函数
+// 代理请求函数 - 简化版
 const proxyRequest = async (url, method, headers, body) => {
   try {
     // 处理URL路径
     let targetPath = url.replace(/^\/proxy/, '');
-    // 如果路径为空，默认为根路径
-    if (!targetPath) {
+    if (!targetPath || targetPath === '/') {
       targetPath = '/';
     }
     
     const targetUrl = TARGET_URL + targetPath;
-    console.log('Proxying to:', targetUrl);
     
-    // 清理headers，移除一些可能导致问题的头
-    const cleanHeaders = {};
-    for (const [key, value] of Object.entries(headers)) {
-      const lowerKey = key.toLowerCase();
-      if (!['host', 'connection', 'upgrade', 'proxy-connection', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailers', 'transfer-encoding'].includes(lowerKey)) {
-        cleanHeaders[key] = value;
-      }
-    }
-    
+    // 最简单的fetch选项
     const options = {
-      method,
+      method: method || 'GET',
       headers: {
-        ...cleanHeaders,
-        'User-Agent': 'BMNR-Tracker-Proxy/1.0',
-        'Host': new URL(TARGET_URL).host,
-        'Origin': TARGET_URL,
-        'Referer': TARGET_URL
+        'User-Agent': 'Mozilla/5.0 (compatible; BMNR-Tracker-Proxy/1.0)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate'
       }
     };
     
+    // 只在非GET请求时添加body
     if (body && method !== 'GET' && method !== 'HEAD') {
       options.body = body;
+      options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
     }
     
-    console.log('Fetch options:', { url: targetUrl, method, headers: options.headers });
+    console.log('Simple proxy request to:', targetUrl);
     
     const response = await fetch(targetUrl, options);
-    console.log('Response status:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
     
     const content = await response.text();
     
-    // 创建新的响应头
-    const responseHeaders = new Headers();
+    // 简单的响应头
+    const responseHeaders = {
+      'Content-Type': response.headers.get('content-type') || 'text/html',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    };
     
-    // 复制原始响应头，但排除一些安全头
-    for (const [key, value] of response.headers.entries()) {
-      if (!['x-frame-options', 'content-security-policy', 'x-content-type-options', 'strict-transport-security'].includes(key.toLowerCase())) {
-        responseHeaders.set(key, value);
-      }
-    }
-    
-    // 添加CORS头
-    responseHeaders.set('Access-Control-Allow-Origin', '*');
-    responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    
-    // 如果是HTML内容，进行修改
+    // 如果是HTML，进行简单的修改
     let finalContent = content;
-    if (responseHeaders.get('content-type')?.includes('text/html')) {
-      finalContent = modifyHtmlContent(content);
+    if (responseHeaders['Content-Type'].includes('text/html')) {
+      // 简单的HTML修改，只添加CSS
+      finalContent = content.replace('</head>', `${customCSS}</head>`);
     }
     
     return new Response(finalContent, {
       status: response.status,
-      statusText: response.statusText,
       headers: responseHeaders
     });
     
   } catch (error) {
-    console.error('Proxy error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      url: url,
-      method: method
-    });
+    console.error('Proxy error:', error.message);
     
-    return new Response(JSON.stringify({
-      error: 'Proxy Error',
-      message: error.message || 'Unable to connect to target server',
-      details: `Failed to proxy request to ${TARGET_URL}`,
-      timestamp: new Date().toISOString(),
-      debug: {
-        originalUrl: url,
-        targetUrl: TARGET_URL + (url.replace(/^\/proxy/, '') || '/'),
-        method: method
-      }
-    }, null, 2), {
+    // 返回简单的错误页面
+    const errorHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>代理错误</title>
+        <meta charset="utf-8">
+      </head>
+      <body>
+        <h1>代理服务错误</h1>
+        <p>无法连接到目标服务器: ${TARGET_URL}</p>
+        <p>错误信息: ${error.message}</p>
+        <p>请求路径: ${url}</p>
+        <a href="/">返回首页</a>
+      </body>
+      </html>
+    `;
+    
+    return new Response(errorHtml, {
       status: 502,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'text/html; charset=utf-8',
         'Access-Control-Allow-Origin': '*'
       }
     });
@@ -557,6 +546,46 @@ export default async function onRequest(context) {
   // Favicon处理
   if (pathname === '/favicon.ico') {
     return new Response(null, { status: 204 });
+  }
+  
+  // 调试路由
+  if (pathname === '/debug') {
+    const debugInfo = {
+      request: {
+        url: request.url,
+        method: request.method,
+        headers: Object.fromEntries(request.headers.entries ? request.headers.entries() : [])
+      },
+      pathname: pathname,
+      url_object: {
+        host: url.host || 'N/A',
+        pathname: url.pathname || 'N/A'
+      },
+      target_url: TARGET_URL,
+      timestamp: new Date().toISOString()
+    };
+    
+    return new Response(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>调试信息</title>
+        <meta charset="utf-8">
+        <style>body{font-family:monospace;padding:20px;} pre{background:#f5f5f5;padding:15px;border-radius:5px;}</style>
+      </head>
+      <body>
+        <h1>EdgeOne Functions 调试信息</h1>
+        <pre>${JSON.stringify(debugInfo, null, 2)}</pre>
+        <p><a href="/">返回首页</a> | <a href="/proxy">测试代理</a></p>
+      </body>
+      </html>
+    `, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
   }
   
   // 代理请求
