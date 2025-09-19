@@ -1,39 +1,23 @@
 {
   "name": "bmnr-tracker",
   "version": "1.0.0",
-  "description": "BMNR tracker proxy server optimized for EdgeOne.ai deployment",
-  "main": "index.js",
+  "description": "BMNR tracker proxy server for EdgeOne.ai Functions",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js",
+    "start": "echo 'EdgeOne Functions - no local start needed'",
     "build": "echo 'Build completed'",
-    "test": "echo 'Tests not implemented yet'"
+    "test": "echo 'No tests'"
   },
   "engines": {
     "node": ">=18.0.0"
   },
-  "dependencies": {
-    "cheerio": "1.0.0-rc.10",
-    "http-proxy-middleware": "^2.0.6"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  },
+  "dependencies": {},
   "keywords": [
     "proxy",
     "bmnr",
     "tracker",
     "edgeone",
-    "serverless"
+    "functions"
   ],
   "author": "Your Name",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yourusername/bmnr-tracker.git"
-  },
-  "bugs": {
-    "url": "https://github.com/yourusername/bmnr-tracker/issues"
-  },
-  "homepage": "https://github.com/yourusername/bmnr-tracker#readme"
+  "license": "MIT"
 }
