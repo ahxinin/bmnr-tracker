@@ -78,6 +78,37 @@ export default function onRequest(context) {
     });
   }
   
+  if (pathname === '/debug') {
+    const debugInfo = {
+      request: {
+        url: request.url,
+        method: request.method,
+        headers: Object.fromEntries(request.headers.entries())
+      },
+      pathname: pathname,
+      timestamp: new Date().toISOString(),
+      platform: 'EdgeOne Edge Functions'
+    };
+    
+    return new Response(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>调试信息</title>
+        <meta charset="utf-8">
+        <style>body{font-family:monospace;padding:20px;background:#f5f5f5;} pre{background:#fff;padding:15px;border-radius:5px;border:1px solid #ddd;}</style>
+      </head>
+      <body>
+        <h1>EdgeOne Edge Functions 调试信息</h1>
+        <pre>${JSON.stringify(debugInfo, null, 2)}</pre>
+        <p><a href="/">返回首页</a> | <a href="/proxy">测试代理</a></p>
+      </body>
+      </html>
+    `, {
+      headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    });
+  }
+  
   if (pathname === '/test') {
     return new Response(JSON.stringify({
       message: 'Edge Functions test successful!',
@@ -94,19 +125,69 @@ export default function onRequest(context) {
   }
   
   if (pathname.startsWith('/proxy')) {
-    const proxyUrl = 'https://trackbmnr.com' + pathname.replace('/proxy', '');
-    return fetch(proxyUrl, {
-      method: request.method,
-      headers: request.headers,
-      body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined
-    });
+    try {
+      // 处理代理路径
+      let targetPath = pathname.replace('/proxy', '');
+      if (!targetPath || targetPath === '') {
+        targetPath = '/';
+      }
+      
+      const proxyUrl = 'https://trackbmnr.com' + targetPath;
+      console.log('Proxying to:', proxyUrl);
+      
+      const response = await fetch(proxyUrl, {
+        method: request.method,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; BMNR-Tracker-Proxy/1.0)',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5'
+        },
+        body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      // 创建新的响应头
+      const responseHeaders = new Headers(response.headers);
+      responseHeaders.set('Access-Control-Allow-Origin', '*');
+      responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type');
+      
+      // 移除可能阻止iframe嵌入的头
+      responseHeaders.delete('x-frame-options');
+      responseHeaders.delete('content-security-policy');
+      
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders
+      });
+      
+    } catch (error) {
+      console.error('Proxy error:', error);
+      return new Response(JSON.stringify({
+        error: 'Proxy Error',
+        message: error.message,
+        target: 'https://trackbmnr.com',
+        path: pathname,
+        timestamp: new Date().toISOString()
+      }, null, 2), {
+        status: 502,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
   }
   
   // 404处理
   return new Response(JSON.stringify({
     error: 'Not Found',
     message: `Path '${pathname}' not found`,
-    available_paths: ['/', '/health', '/test', '/proxy'],
+    available_paths: ['/', '/health', '/test', '/debug', '/proxy'],
     timestamp: new Date().toISOString()
   }, null, 2), {
     status: 404,
