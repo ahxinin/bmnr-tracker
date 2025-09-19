@@ -10,7 +10,10 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "http-proxy-middleware": "^2.0.6",
+    "cheerio": "^1.0.0-rc.12"
+  },
   "keywords": [
     "proxy",
     "bmnr",
