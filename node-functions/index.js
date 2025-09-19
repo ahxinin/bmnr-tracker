@@ -1,21 +1,31 @@
-// EdgeOne Node Functions - 完整代理服务器
+// EdgeOne Node Functions - 简化版代理服务器
 export default async function onRequest(context) {
-  const { request } = context;
-  
-  // 安全地获取URL和路径
-  let pathname;
-  try {
-    if (request.url.startsWith('http')) {
-      pathname = new URL(request.url).pathname;
-    } else {
-      pathname = request.url.split('?')[0];
-    }
-  } catch (error) {
-    pathname = request.url || '/';
-    pathname = pathname.split('?')[0];
+  // 安全地获取request对象，支持不同的EdgeOne环境
+  let request;
+  if (context && context.request) {
+    request = context.request;
+  } else if (context) {
+    // 可能context本身就是request
+    request = context;
+  } else {
+    return new Response('Invalid request context', { status: 500 });
   }
   
-  const method = request.method;
+  // 安全地获取URL和路径
+  let pathname = '/';
+  try {
+    if (request.url) {
+      if (request.url.startsWith('http')) {
+        pathname = new URL(request.url).pathname;
+      } else {
+        pathname = request.url.split('?')[0];
+      }
+    }
+  } catch (error) {
+    pathname = '/';
+  }
+  
+  const method = request.method || 'GET';
   
   // 处理CORS预检请求
   if (method === 'OPTIONS') {
@@ -109,7 +119,8 @@ export default async function onRequest(context) {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       platform: 'EdgeOne Node Functions',
-      path: pathname
+      path: pathname,
+      method: method
     }, null, 2), {
       headers: { 'Content-Type': 'application/json' }
     });
@@ -119,21 +130,28 @@ export default async function onRequest(context) {
   if (pathname === '/debug') {
     let requestHeaders = {};
     try {
-      if (request.headers && typeof request.headers.forEach === 'function') {
-        request.headers.forEach((value, key) => {
-          requestHeaders[key] = value;
-        });
-      } else if (request.headers) {
-        requestHeaders = request.headers;
+      if (request.headers) {
+        if (typeof request.headers.forEach === 'function') {
+          request.headers.forEach((value, key) => {
+            requestHeaders[key] = value;
+          });
+        } else if (typeof request.headers === 'object') {
+          requestHeaders = request.headers;
+        }
       }
     } catch (e) {
       requestHeaders = { error: 'Cannot read headers: ' + e.message };
     }
     
     const debugInfo = {
+      context: {
+        type: typeof context,
+        keys: context ? Object.keys(context) : 'null',
+        hasRequest: !!(context && context.request)
+      },
       request: {
-        url: request.url,
-        method: request.method,
+        url: request.url || 'undefined',
+        method: request.method || 'undefined',
         headers: requestHeaders
       },
       pathname: pathname,
@@ -176,8 +194,8 @@ export default async function onRequest(context) {
       message: 'Node Functions test successful!',
       timestamp: new Date().toISOString(),
       request: {
-        method: request.method,
-        url: request.url,
+        method: method,
+        url: request.url || 'undefined',
         pathname: pathname
       }
     }, null, 2), {
@@ -196,7 +214,7 @@ export default async function onRequest(context) {
       const proxyUrl = 'https://trackbmnr.com' + targetPath;
       
       const response = await fetch(proxyUrl, {
-        method: method || 'GET',
+        method: method,
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; BMNR-Tracker-Proxy/1.0)',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
