@@ -432,8 +432,29 @@ const proxyRequest = async (url, method, headers, body) => {
 // EdgeOne Functions入口函数
 export default async function onRequest(context) {
   const { request } = context;
-  const url = new URL(request.url);
-  const pathname = url.pathname;
+  
+  // 安全地构建URL对象
+  let url, pathname;
+  try {
+    // 如果request.url是完整URL，直接使用
+    if (request.url.startsWith('http')) {
+      url = new URL(request.url);
+      pathname = url.pathname;
+    } else {
+      // 如果是相对路径，构建一个临时URL
+      url = new URL(request.url, 'https://example.com');
+      pathname = url.pathname;
+    }
+  } catch (error) {
+    // 如果URL解析失败，从路径中提取pathname
+    console.log('URL parsing error, using fallback:', error);
+    pathname = request.url || '/';
+    // 移除查询参数
+    pathname = pathname.split('?')[0];
+    // 创建一个临时的URL对象用于获取host
+    url = { host: 'localhost', pathname: pathname };
+  }
+  
   const method = request.method;
   
   // 处理CORS预检请求
@@ -450,8 +471,9 @@ export default async function onRequest(context) {
   }
   
   // 根路径 - 返回主页
-  if (pathname === '/') {
-    return new Response(getHomePage(url.host), {
+  if (pathname === '/' || pathname === '/index') {
+    const host = url.host || 'localhost';
+    return new Response(getHomePage(host), {
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
