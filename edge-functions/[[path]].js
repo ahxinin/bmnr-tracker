@@ -79,15 +79,36 @@ export default function onRequest(context) {
   }
   
   if (pathname === '/debug') {
+    // 安全地获取请求头信息
+    let requestHeaders = {};
+    try {
+      if (request.headers) {
+        // 尝试不同的方法获取headers
+        if (typeof request.headers.entries === 'function') {
+          requestHeaders = Object.fromEntries(request.headers.entries());
+        } else if (typeof request.headers.forEach === 'function') {
+          request.headers.forEach((value, key) => {
+            requestHeaders[key] = value;
+          });
+        } else {
+          // EdgeOne Functions可能直接提供对象
+          requestHeaders = request.headers;
+        }
+      }
+    } catch (e) {
+      requestHeaders = { error: 'Cannot read headers: ' + e.message };
+    }
+    
     const debugInfo = {
       request: {
         url: request.url,
         method: request.method,
-        headers: Object.fromEntries(request.headers.entries())
+        headers: requestHeaders
       },
       pathname: pathname,
       timestamp: new Date().toISOString(),
-      platform: 'EdgeOne Edge Functions'
+      platform: 'EdgeOne Edge Functions',
+      context: typeof context !== 'undefined' ? Object.keys(context) : 'undefined'
     };
     
     return new Response(`
@@ -110,6 +131,24 @@ export default function onRequest(context) {
   }
   
   if (pathname === '/test') {
+    // 安全地获取请求头信息
+    let requestHeaders = {};
+    try {
+      if (request.headers) {
+        if (typeof request.headers.entries === 'function') {
+          requestHeaders = Object.fromEntries(request.headers.entries());
+        } else if (typeof request.headers.forEach === 'function') {
+          request.headers.forEach((value, key) => {
+            requestHeaders[key] = value;
+          });
+        } else {
+          requestHeaders = request.headers;
+        }
+      }
+    } catch (e) {
+      requestHeaders = { error: 'Cannot read headers: ' + e.message };
+    }
+    
     return new Response(JSON.stringify({
       message: 'Edge Functions test successful!',
       timestamp: new Date().toISOString(),
@@ -117,7 +156,7 @@ export default function onRequest(context) {
         method: request.method,
         url: request.url,
         pathname: pathname,
-        headers: Object.fromEntries(request.headers.entries())
+        headers: requestHeaders
       }
     }, null, 2), {
       headers: { 'Content-Type': 'application/json' }
@@ -135,31 +174,32 @@ export default function onRequest(context) {
       const proxyUrl = 'https://trackbmnr.com' + targetPath;
       console.log('Proxying to:', proxyUrl);
       
+      // 最简化的fetch请求，不传递任何原始headers
       const response = await fetch(proxyUrl, {
-        method: request.method,
+        method: request.method || 'GET',
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; BMNR-Tracker-Proxy/1.0)',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5'
-        },
-        body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        }
+        // 不传递body，避免potential issues
       });
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
-      // 创建新的响应头
-      const responseHeaders = new Headers(response.headers);
-      responseHeaders.set('Access-Control-Allow-Origin', '*');
-      responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      responseHeaders.set('Access-Control-Allow-Headers', 'Content-Type');
+      // 获取响应内容
+      const content = await response.text();
       
-      // 移除可能阻止iframe嵌入的头
-      responseHeaders.delete('x-frame-options');
-      responseHeaders.delete('content-security-policy');
+      // 创建简单的响应头
+      const responseHeaders = {
+        'Content-Type': response.headers.get('content-type') || 'text/html',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      };
       
-      return new Response(response.body, {
+      return new Response(content, {
         status: response.status,
         statusText: response.statusText,
         headers: responseHeaders
@@ -167,16 +207,46 @@ export default function onRequest(context) {
       
     } catch (error) {
       console.error('Proxy error:', error);
-      return new Response(JSON.stringify({
-        error: 'Proxy Error',
-        message: error.message,
-        target: 'https://trackbmnr.com',
-        path: pathname,
-        timestamp: new Date().toISOString()
-      }, null, 2), {
+      
+      // 返回友好的HTML错误页面
+      const errorHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>代理错误</title>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; background: #f5f5f5; }
+            .error-box { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #e74c3c; margin-bottom: 20px; }
+            p { margin-bottom: 15px; line-height: 1.6; }
+            .btn { display: inline-block; background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+            .details { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 20px; font-family: monospace; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="error-box">
+            <h1>🚫 代理服务错误</h1>
+            <p><strong>无法连接到目标服务器：</strong> https://trackbmnr.com</p>
+            <p><strong>错误信息：</strong> ${error.message}</p>
+            <p><strong>请求路径：</strong> ${pathname}</p>
+            <div class="details">
+              <strong>调试信息：</strong><br>
+              时间: ${new Date().toISOString()}<br>
+              目标URL: https://trackbmnr.com${targetPath || '/'}<br>
+              平台: EdgeOne Edge Functions
+            </div>
+            <a href="/" class="btn">🏠 返回首页</a>
+            <a href="/debug" class="btn">🔍 查看调试信息</a>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      return new Response(errorHtml, {
         status: 502,
         headers: { 
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/html; charset=utf-8',
           'Access-Control-Allow-Origin': '*'
         }
       });
