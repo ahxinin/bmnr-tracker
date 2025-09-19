@@ -525,6 +525,62 @@ app.get('/favicon.ico', (req, res) => {
   res.status(204).end();
 });
 
+// 调试路由
+app.get('/debug', (req, res) => {
+  const debugInfo = {
+    request: {
+      url: req.url,
+      method: req.method,
+      headers: req.headers,
+      path: req.path,
+      originalUrl: req.originalUrl
+    },
+    server: {
+      platform: 'EdgeOne Express Server',
+      node_version: process.version,
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      env: {
+        NODE_ENV: process.env.NODE_ENV,
+        TARGET_URL: TARGET_URL,
+        PORT: PORT
+      }
+    },
+    dependencies: {
+      cheerio: typeof cheerio,
+      express: typeof express,
+      createProxyMiddleware: typeof createProxyMiddleware
+    },
+    timestamp: new Date().toISOString()
+  };
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>EdgeOne Express 调试信息</title>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        pre { background: #fff; padding: 15px; border-radius: 5px; border: 1px solid #ddd; overflow-x: auto; }
+        h1 { color: #333; }
+        .nav { margin-bottom: 20px; }
+        .nav a { background: #007bff; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-right: 10px; }
+      </style>
+    </head>
+    <body>
+      <h1>🔍 EdgeOne Express 调试信息</h1>
+      <div class="nav">
+        <a href="/">🏠 首页</a>
+        <a href="/proxy">🔗 代理</a>
+        <a href="/health">💊 健康检查</a>
+      </div>
+      <pre>${JSON.stringify(debugInfo, null, 2)}</pre>
+    </body>
+    </html>
+  `);
+});
+
 // 错误处理中间件
 app.use((err, req, res, next) => {
   console.error('Application error:', err);
@@ -539,8 +595,8 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
   res.status(404).json({
     error: 'Not Found',
-    message: \`Path '\${req.path}' not found\`,
-    available_paths: ['/', '/proxy', '/health', '/api/status'],
+    message: `Path '${req.path}' not found`,
+    available_paths: ['/', '/proxy', '/health', '/debug', '/api/status'],
     timestamp: new Date().toISOString()
   });
 });
