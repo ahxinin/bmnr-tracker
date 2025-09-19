@@ -366,12 +366,29 @@ const modifyHtmlContent = (html) => {
 // 代理请求函数
 const proxyRequest = async (url, method, headers, body) => {
   try {
-    const targetUrl = TARGET_URL + url.replace(/^\/proxy/, '');
+    // 处理URL路径
+    let targetPath = url.replace(/^\/proxy/, '');
+    // 如果路径为空，默认为根路径
+    if (!targetPath) {
+      targetPath = '/';
+    }
+    
+    const targetUrl = TARGET_URL + targetPath;
+    console.log('Proxying to:', targetUrl);
+    
+    // 清理headers，移除一些可能导致问题的头
+    const cleanHeaders = {};
+    for (const [key, value] of Object.entries(headers)) {
+      const lowerKey = key.toLowerCase();
+      if (!['host', 'connection', 'upgrade', 'proxy-connection', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailers', 'transfer-encoding'].includes(lowerKey)) {
+        cleanHeaders[key] = value;
+      }
+    }
     
     const options = {
       method,
       headers: {
-        ...headers,
+        ...cleanHeaders,
         'User-Agent': 'BMNR-Tracker-Proxy/1.0',
         'Host': new URL(TARGET_URL).host,
         'Origin': TARGET_URL,
@@ -383,7 +400,11 @@ const proxyRequest = async (url, method, headers, body) => {
       options.body = body;
     }
     
+    console.log('Fetch options:', { url: targetUrl, method, headers: options.headers });
+    
     const response = await fetch(targetUrl, options);
+    console.log('Response status:', response.status, response.statusText);
+    
     const content = await response.text();
     
     // 创建新的响应头
@@ -415,11 +436,24 @@ const proxyRequest = async (url, method, headers, body) => {
     
   } catch (error) {
     console.error('Proxy error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      url: url,
+      method: method
+    });
+    
     return new Response(JSON.stringify({
       error: 'Proxy Error',
-      message: 'Unable to connect to target server',
-      timestamp: new Date().toISOString()
-    }), {
+      message: error.message || 'Unable to connect to target server',
+      details: `Failed to proxy request to ${TARGET_URL}`,
+      timestamp: new Date().toISOString(),
+      debug: {
+        originalUrl: url,
+        targetUrl: TARGET_URL + (url.replace(/^\/proxy/, '') || '/'),
+        method: method
+      }
+    }, null, 2), {
       status: 502,
       headers: {
         'Content-Type': 'application/json',
