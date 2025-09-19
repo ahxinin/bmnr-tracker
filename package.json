@@ -1,27 +1,20 @@
 {
   "name": "bmnr-tracker",
   "version": "1.0.0",
-  "description": "BMNR tracker proxy server for EdgeOne.ai Functions",
+  "description": "BMNR tracker proxy server for EdgeOne Functions",
+  "type": "module",
+  "main": "node-functions/index.js",
   "scripts": {
-    "start": "echo 'EdgeOne Functions - no local start needed'",
-    "build": "echo 'Build completed'",
-    "test": "echo 'No tests'"
+    "start": "node node-functions/index.js"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "dependencies": {
-    "http-proxy-middleware": "^2.0.6",
-    "cheerio": "^1.0.0-rc.12",
-    "express": "^4.18.2",
-    "cors": "^2.8.5"
   },
   "keywords": [
     "proxy",
     "bmnr",
     "tracker",
-    "edgeone",
-    "functions"
+    "edgeone"
   ],
   "author": "Your Name",
   "license": "MIT"
