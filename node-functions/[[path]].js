@@ -81,29 +81,58 @@ export default function onRequest(context) {
           console.log('Found CSS files:', cssCount);
           console.log('Found JS files:', jsCount);
           
-          // 替换CSS文件链接
+          // 替换CSS文件链接（包括Next.js静态资源）
           modifiedContent = modifiedContent.replace(
             /<link([^>]*)\s+href=(["'])([^"']+\.css[^"']*)\2/gi,
             (match, attrs, quote, href) => {
               if (href.startsWith('http') || href.startsWith('//')) {
                 return match;
               }
+              // 处理相对路径（如 _next/static/...）和绝对路径（如 /static/...）
               const newHref = href.startsWith('/') ? 'https://trackbmnr.com' + href : 'https://trackbmnr.com/' + href;
               console.log('CSS:', href, '->', newHref);
               return `<link${attrs} href=${quote}${newHref}${quote}`;
             }
           );
           
-          // 替换JS文件链接
+          // 替换JS文件链接（包括Next.js静态资源）
           modifiedContent = modifiedContent.replace(
             /<script([^>]*)\s+src=(["'])([^"']+\.js[^"']*)\2/gi,
             (match, attrs, quote, src) => {
               if (src.startsWith('http') || src.startsWith('//')) {
                 return match;
               }
+              // 处理相对路径（如 _next/static/...）和绝对路径（如 /static/...）
               const newSrc = src.startsWith('/') ? 'https://trackbmnr.com' + src : 'https://trackbmnr.com/' + src;
               console.log('JS:', src, '->', newSrc);
               return `<script${attrs} src=${quote}${newSrc}${quote}`;
+            }
+          );
+          
+          // 替换API调用路径
+          modifiedContent = modifiedContent.replace(
+            /fetch\s*\(\s*(["'`])([^"'`]*\/api\/[^"'`]*)\1/gi,
+            (match, quote, apiPath) => {
+              if (apiPath.startsWith('http') || apiPath.startsWith('//')) {
+                return match;
+              }
+              const newApiPath = apiPath.startsWith('/') ? 'https://trackbmnr.com' + apiPath : 'https://trackbmnr.com/' + apiPath;
+              console.log('API:', apiPath, '->', newApiPath);
+              return `fetch(${quote}${newApiPath}${quote}`;
+            }
+          );
+          
+          // 替换其他可能的API调用模式
+          modifiedContent = modifiedContent.replace(
+            /(["'`])(\/?api\/[^"'`]*)\1/gi,
+            (match, quote, apiPath) => {
+              // 避免重复替换已经处理过的fetch调用
+              if (match.includes('https://trackbmnr.com')) {
+                return match;
+              }
+              const newApiPath = apiPath.startsWith('/') ? 'https://trackbmnr.com' + apiPath : 'https://trackbmnr.com/' + apiPath;
+              console.log('API path:', apiPath, '->', newApiPath);
+              return `${quote}${newApiPath}${quote}`;
             }
           );
           
@@ -137,6 +166,108 @@ export default function onRequest(context) {
         `, {
           status: 502,
           headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
+      });
+    }
+    
+    // 处理静态资源代理（Next.js _next 目录等）
+    if (pathname.startsWith('/_next/') || pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)) {
+      // 处理查询参数
+      let queryString = '';
+      try {
+        const url = new URL(request.url);
+        queryString = url.search;
+      } catch {
+        const queryIndex = request.url.indexOf('?');
+        if (queryIndex !== -1) {
+          queryString = request.url.substring(queryIndex);
+        }
+      }
+      
+      const proxyUrl = 'https://trackbmnr.com' + pathname + queryString;
+      
+      console.log('Static resource proxying to:', proxyUrl);
+      
+      return fetch(proxyUrl, {
+        method: request.method,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; BMNR-Tracker-Proxy/1.0)',
+          'Accept': '*/*'
+        }
+      }).then(response => {
+        console.log('Static resource response - Status:', response.status);
+        
+        return new Response(response.body, {
+          status: response.status,
+          headers: {
+            'Content-Type': response.headers.get('content-type') || 'application/octet-stream',
+            'Cache-Control': response.headers.get('cache-control') || 'public, max-age=3600',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }).catch(error => {
+        console.error('Static resource proxy error:', error);
+        return new Response('Static resource not found', {
+          status: 404,
+          headers: { 
+            'Content-Type': 'text/plain',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      });
+    }
+    
+    // 处理API请求代理（直接API调用）
+    if (pathname.startsWith('/api/') || pathname === '/api') {
+      // 处理查询参数
+      let queryString = '';
+      try {
+        const url = new URL(request.url);
+        queryString = url.search;
+      } catch {
+        const queryIndex = request.url.indexOf('?');
+        if (queryIndex !== -1) {
+          queryString = request.url.substring(queryIndex);
+        }
+      }
+      
+      const proxyUrl = 'https://trackbmnr.com' + pathname + queryString;
+      
+      console.log('API Proxying to:', proxyUrl);
+      
+      return fetch(proxyUrl, {
+        method: request.method,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; BMNR-Tracker-Proxy/1.0)',
+          'Accept': 'application/json,*/*'
+        }
+      }).then(async response => {
+        const content = await response.text();
+        const contentType = response.headers.get('content-type') || '';
+        
+        console.log('API Response - Status:', response.status, 'Content-Type:', contentType);
+        
+        return new Response(content, {
+          status: response.status,
+          headers: {
+            'Content-Type': contentType,
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+          }
+        });
+      }).catch(error => {
+        console.error('API Proxy error:', error);
+        return new Response(JSON.stringify({
+          error: 'API proxy failed',
+          message: error.message,
+          target: proxyUrl
+        }), {
+          status: 502,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
         });
       });
     }
