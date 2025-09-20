@@ -136,6 +136,85 @@ export default function onRequest(context) {
             }
           );
           
+          // 自定义CSS覆盖黑色主题
+          const customCSS = `
+<style>
+  /* 只针对明确的深色背景进行替换，避免破坏布局 */
+  body {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+  }
+  
+  /* 具体的深色背景替换 */
+  [style*="background-color: black"],
+  [style*="background-color: #000000"],
+  [style*="background-color: #000"],
+  [style*="background-color: rgb(0, 0, 0)"],
+  [style*="background-color: rgb(0,0,0)"] {
+    background-color: #ffffff !important;
+  }
+  
+  /* 深色文字替换为深灰色，保持对比度 */
+  [style*="color: white"],
+  [style*="color: #ffffff"],
+  [style*="color: #fff"],
+  [style*="color: rgb(255, 255, 255)"],
+  [style*="color: rgb(255,255,255)"] {
+    color: #333333 !important;
+  }
+  
+  /* 常见的深色主题类名 */
+  .dark-theme,
+  .dark-mode,
+  .bg-dark,
+  .bg-black {
+    background-color: #f8f9fa !important;
+    color: #333333 !important;
+  }
+  
+  .text-white {
+    color: #333333 !important;
+  }
+  
+  /* 表单元素优化 */
+  input[style*="background-color: black"],
+  textarea[style*="background-color: black"],
+  select[style*="background-color: black"] {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+    border: 1px solid #ced4da !important;
+  }
+  
+  /* 按钮优化 - 保持原有样式，只修改颜色 */
+  button[style*="background-color: black"],
+  .btn[style*="background-color: black"] {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
+  }
+  
+  /* 链接保持原有样式 */
+  a[style*="color: white"] {
+    color: #007bff !important;
+  }
+  
+  /* 修复可能的边框和阴影问题 */
+  [style*="border-color: black"] {
+    border-color: #dee2e6 !important;
+  }
+  
+  [style*="box-shadow"][style*="black"] {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  }
+</style>
+`;
+          
+          // 注入自定义CSS到head标签
+          modifiedContent = modifiedContent.replace(
+            /<\/head>/i,
+            customCSS + '</head>'
+          );
+          
+          console.log('Injected custom CSS for theme override');
           console.log('HTML processing completed');
         }
         
