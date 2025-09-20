@@ -154,6 +154,22 @@ export default function onRequest(context) {
     background-color: #ffffff !important;
   }
   
+  /* 移除灰色半透明背景 */
+  .bg-gray-900\/50,
+  .bg-gray-800\/50,
+  .bg-gray-900,
+  .bg-gray-800 {
+    background-color: #ffffff !important;
+  }
+  
+  /* Tailwind CSS 灰色背景类 */
+  [class*="bg-gray-900"],
+  [class*="bg-gray-800"],
+  [class*="bg-slate-900"],
+  [class*="bg-slate-800"] {
+    background-color: #ffffff !important;
+  }
+  
   /* 深色文字替换为深灰色，保持对比度 */
   [style*="color: white"],
   [style*="color: #ffffff"],
@@ -200,6 +216,19 @@ export default function onRequest(context) {
   /* 修复可能的边框和阴影问题 */
   [style*="border-color: black"] {
     border-color: #dee2e6 !important;
+  }
+  
+  /* Tailwind CSS 灰色边框类 */
+  .border-gray-700,
+  .border-gray-600,
+  .border-gray-800 {
+    border-color: #dee2e6 !important;
+  }
+  
+  /* 灰色文字颜色调整 */
+  .text-gray-400,
+  .text-gray-500 {
+    color: #6c757d !important;
   }
   
   [style*="box-shadow"][style*="black"] {
