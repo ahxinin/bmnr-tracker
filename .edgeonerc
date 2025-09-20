@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "directory": "node-functions",
+    "nodeVersion": "18"
+  },
+  "build": {
+    "command": "",
+    "outputDirectory": "."
+  }
+}

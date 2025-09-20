@@ -1,0 +1,11 @@
+{
+  "framework": "static",
+  "build": {
+    "command": "echo 'No build needed'",
+    "outputDirectory": "./",
+    "publishDirectory": "./"
+  },
+  "functions": {
+    "directory": "node-functions"
+  }
+}

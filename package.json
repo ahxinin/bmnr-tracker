@@ -7,9 +7,15 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node index.js",
+    "build": "echo 'Static site with Node Functions'",
+    "start": "echo 'EdgeOne Functions deployment'",
     "dev": "edgeone pages dev"
   },
+  "files": [
+    "node-functions/**/*",
+    "package.json",
+    "README.md"
+  ],
   "keywords": [
     "proxy",
     "bmnr",
