@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "description": "BMNR tracker proxy server for EdgeOne Functions",
   "type": "module",
-  "main": "node-functions/index.js",
-  "scripts": {
-    "start": "node node-functions/index.js"
-  },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "edgeone pages dev"
   },
   "keywords": [
     "proxy",
