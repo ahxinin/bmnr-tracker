@@ -38,7 +38,21 @@ export default function onRequest(context) {
     // 处理代理请求
     if (pathname.startsWith('/proxy')) {
       const targetPath = pathname.replace('/proxy', '') || '/';
-      const proxyUrl = 'https://trackbmnr.com' + targetPath;
+      
+      // 处理查询参数
+      let queryString = '';
+      try {
+        const url = new URL(request.url);
+        queryString = url.search;
+      } catch {
+        // 如果无法解析，尝试从原始URL中提取
+        const queryIndex = request.url.indexOf('?');
+        if (queryIndex !== -1) {
+          queryString = request.url.substring(queryIndex);
+        }
+      }
+      
+      const proxyUrl = 'https://trackbmnr.com' + targetPath + queryString;
       
       console.log('Proxying to:', proxyUrl);
       
@@ -48,11 +62,58 @@ export default function onRequest(context) {
           'User-Agent': 'Mozilla/5.0 (compatible; BMNR-Tracker-Proxy/1.0)',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
         }
-      }).then(response => {
-        return new Response(response.body, {
+      }).then(async response => {
+        const content = await response.text();
+        const contentType = response.headers.get('content-type') || '';
+        
+        console.log('Content-Type:', contentType);
+        console.log('Content length:', content.length);
+        
+        // 如果是HTML内容，修改其中的URL
+        let modifiedContent = content;
+        if (contentType.includes('text/html')) {
+          console.log('Processing HTML content...');
+          
+          // 计算原始文档中的资源数量
+          const cssCount = (content.match(/<link[^>]*href=["'][^"']*\.css[^"']*["']/gi) || []).length;
+          const jsCount = (content.match(/<script[^>]*src=["'][^"']*\.js[^"']*["']/gi) || []).length;
+          
+          console.log('Found CSS files:', cssCount);
+          console.log('Found JS files:', jsCount);
+          
+          // 替换CSS文件链接
+          modifiedContent = modifiedContent.replace(
+            /<link([^>]*)\s+href=(["'])([^"']+\.css[^"']*)\2/gi,
+            (match, attrs, quote, href) => {
+              if (href.startsWith('http') || href.startsWith('//')) {
+                return match;
+              }
+              const newHref = href.startsWith('/') ? 'https://trackbmnr.com' + href : 'https://trackbmnr.com/' + href;
+              console.log('CSS:', href, '->', newHref);
+              return `<link${attrs} href=${quote}${newHref}${quote}`;
+            }
+          );
+          
+          // 替换JS文件链接
+          modifiedContent = modifiedContent.replace(
+            /<script([^>]*)\s+src=(["'])([^"']+\.js[^"']*)\2/gi,
+            (match, attrs, quote, src) => {
+              if (src.startsWith('http') || src.startsWith('//')) {
+                return match;
+              }
+              const newSrc = src.startsWith('/') ? 'https://trackbmnr.com' + src : 'https://trackbmnr.com/' + src;
+              console.log('JS:', src, '->', newSrc);
+              return `<script${attrs} src=${quote}${newSrc}${quote}`;
+            }
+          );
+          
+          console.log('HTML processing completed');
+        }
+        
+        return new Response(modifiedContent, {
           status: response.status,
           headers: {
-            'Content-Type': response.headers.get('content-type') || 'text/html',
+            'Content-Type': contentType,
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type'
