@@ -4,7 +4,10 @@
       "Bash(npm install)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Read(/Users/ahxin/GitHub/longport/track-bmnr/**)",
+      "Read(/Users/ahxin/GitHub/longport/track-bmnr/**)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []

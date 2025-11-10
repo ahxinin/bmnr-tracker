@@ -26,7 +26,7 @@ export default function onRequest(context) {
         </head>
         <body>
           <h1>🔗 BMNR Tracker 代理</h1>
-          <p>访问 /proxy 来代理到 trackbmnr.com</p>
+          <p>访问 /proxy 来代理到 bitminetracker.io</p>
           <p><a href="/proxy">/proxy</a></p>
         </body>
         </html>
@@ -52,7 +52,7 @@ export default function onRequest(context) {
         }
       }
       
-      const proxyUrl = 'https://trackbmnr.com' + targetPath + queryString;
+      const proxyUrl = 'https://www.bitminetracker.io' + targetPath + queryString;
       
       console.log('Proxying to:', proxyUrl);
       
@@ -89,7 +89,7 @@ export default function onRequest(context) {
                 return match;
               }
               // 处理相对路径（如 _next/static/...）和绝对路径（如 /static/...）
-              const newHref = href.startsWith('/') ? 'https://trackbmnr.com' + href : 'https://trackbmnr.com/' + href;
+              const newHref = href.startsWith('/') ? 'https://www.bitminetracker.io' + href : 'https://www.bitminetracker.io/' + href;
               console.log('CSS:', href, '->', newHref);
               return `<link${attrs} href=${quote}${newHref}${quote}`;
             }
@@ -103,7 +103,7 @@ export default function onRequest(context) {
                 return match;
               }
               // 处理相对路径（如 _next/static/...）和绝对路径（如 /static/...）
-              const newSrc = src.startsWith('/') ? 'https://trackbmnr.com' + src : 'https://trackbmnr.com/' + src;
+              const newSrc = src.startsWith('/') ? 'https://www.bitminetracker.io' + src : 'https://www.bitminetracker.io/' + src;
               console.log('JS:', src, '->', newSrc);
               return `<script${attrs} src=${quote}${newSrc}${quote}`;
             }
@@ -116,7 +116,7 @@ export default function onRequest(context) {
               if (apiPath.startsWith('http') || apiPath.startsWith('//')) {
                 return match;
               }
-              const newApiPath = apiPath.startsWith('/') ? 'https://trackbmnr.com' + apiPath : 'https://trackbmnr.com/' + apiPath;
+              const newApiPath = apiPath.startsWith('/') ? 'https://www.bitminetracker.io' + apiPath : 'https://www.bitminetracker.io/' + apiPath;
               console.log('API:', apiPath, '->', newApiPath);
               return `fetch(${quote}${newApiPath}${quote}`;
             }
@@ -127,10 +127,10 @@ export default function onRequest(context) {
             /(["'`])(\/?api\/[^"'`]*)\1/gi,
             (match, quote, apiPath) => {
               // 避免重复替换已经处理过的fetch调用
-              if (match.includes('https://trackbmnr.com')) {
+              if (match.includes('https://www.bitminetracker.io')) {
                 return match;
               }
-              const newApiPath = apiPath.startsWith('/') ? 'https://trackbmnr.com' + apiPath : 'https://trackbmnr.com/' + apiPath;
+              const newApiPath = apiPath.startsWith('/') ? 'https://www.bitminetracker.io' + apiPath : 'https://www.bitminetracker.io/' + apiPath;
               console.log('API path:', apiPath, '->', newApiPath);
               return `${quote}${newApiPath}${quote}`;
             }
@@ -292,7 +292,7 @@ export default function onRequest(context) {
         }
       }
       
-      const proxyUrl = 'https://trackbmnr.com' + pathname + queryString;
+      const proxyUrl = 'https://www.bitminetracker.io' + pathname + queryString;
       
       console.log('Static resource proxying to:', proxyUrl);
       
@@ -339,7 +339,7 @@ export default function onRequest(context) {
         }
       }
       
-      const proxyUrl = 'https://trackbmnr.com' + pathname + queryString;
+      const proxyUrl = 'https://www.bitminetracker.io' + pathname + queryString;
       
       console.log('API Proxying to:', proxyUrl);
       

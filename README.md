@@ -1,10 +1,10 @@
 # BMNR Tracker Proxy
 
-简单的EdgeOne Functions代理服务器，用于代理访问trackbmnr.com。
+简单的EdgeOne Functions代理服务器，用于代理访问www.bitminetracker.io。
 
 ## 功能
 
-- 🔗 代理访问trackbmnr.com
+- 🔗 代理访问www.bitminetracker.io
 - 🌐 CORS支持
 - 🔧 调试信息
 - 💊 健康检查
@@ -12,7 +12,7 @@
 ## 路由
 
 - `/` - 首页
-- `/proxy` - 代理到trackbmnr.com
+- `/proxy` - 代理到www.bitminetracker.io
 - `/health` - 健康检查
 - `/debug` - 调试信息
 - `/test` - 功能测试
